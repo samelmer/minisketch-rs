@@ -1,7 +1,6 @@
 #![deny(missing_debug_implementations)]
 #![deny(missing_docs)]
 #![deny(unused_results)]
-#![deny(dead_code)]
 #![doc(html_root_url = "https://docs.rs/minisketch_rs/0.1.9")]
 
 //! # minisketch-rs
@@ -25,6 +24,7 @@
 
 pub mod examples;
 
+use std::convert::TryInto;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::BitXorAssign;
@@ -86,7 +86,7 @@ impl Minisketch {
         implementation: u32,
         capacity: usize,
     ) -> Result<Self, MinisketchError> {
-        let inner = unsafe { ffi::minisketch_create(bits, implementation, capacity) };
+        let inner = unsafe { ffi::minisketch_create(bits, implementation, capacity as u64) };
 
         if !inner.is_null() {
             Ok(Minisketch {
@@ -125,7 +125,7 @@ impl Minisketch {
 
     /// Returns capacity of a sketch in number of elements.
     pub fn capacity(&self) -> usize {
-        unsafe { ffi::minisketch_capacity(self.inner) }
+        unsafe { ffi::minisketch_capacity(self.inner).try_into().unwrap() }
     }
 
     /// Returns implementation version number.
@@ -135,7 +135,11 @@ impl Minisketch {
 
     /// Returns the size in bytes for serializing a given sketch.
     pub fn serialized_size(&self) -> usize {
-        unsafe { ffi::minisketch_serialized_size(self.inner) }
+        unsafe {
+            ffi::minisketch_serialized_size(self.inner)
+                .try_into()
+                .unwrap()
+        }
     }
 
     /// Adds a `u64` element to a sketch.
@@ -238,7 +242,7 @@ impl Minisketch {
         if capacity == 0 {
             Err(MinisketchError::new("Merge is failed"))
         } else {
-            Ok(capacity)
+            Ok(capacity as usize)
         }
     }
 
@@ -268,8 +272,9 @@ impl Minisketch {
     /// # Ok::<(), minisketch_rs::MinisketchError>(())
     /// ```
     pub fn decode(&self, elements: &mut [u64]) -> Result<usize, MinisketchError> {
-        let result =
-            unsafe { ffi::minisketch_decode(self.inner, elements.len(), elements.as_mut_ptr()) };
+        let result = unsafe {
+            ffi::minisketch_decode(self.inner, elements.len() as u64, elements.as_mut_ptr())
+        };
 
         if result == -1 {
             Err(MinisketchError::new("Sketch decoding failed"))
@@ -440,7 +445,7 @@ mod tests {
             let sersize = minisketch_serialized_size(sketch_a);
             assert_eq!(sersize, 12 * 4 / 8);
 
-            let mut buf_a = vec![0u8; sersize];
+            let mut buf_a = vec![0u8; sersize as usize];
             minisketch_serialize(sketch_a, buf_a.as_mut_slice().as_mut_ptr());
             minisketch_destroy(sketch_a);
 

@@ -35,7 +35,7 @@ fn build_lib() {
         .unwrap()
         .chain(fields)
         .map(|f| f.unwrap())
-        .filter(|f| !f.file_name().to_string_lossy().contains("test-exhaust.cpp"))
+        .filter(|f| !f.file_name().to_string_lossy().contains("test.cpp"))
         .filter(|f| !f.file_name().to_string_lossy().contains("bench.cpp"))
         .filter(|f| f.file_name().to_string_lossy().ends_with(".cpp"))
         .map(|f| f.path())
